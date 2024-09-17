@@ -11,32 +11,32 @@ stack_pointer = 0  # Указатель на вершину стека, изна
 
 # Заранее определённые команды, начиная с 28-го элемента памяти
 program = [
-    '1 10',  # PUSH 10
-    '1 20',  # PUSH 20
-    '1 30',  # PUSH 30
-    '1 40',  # PUSH 40
-    '1 50',  # PUSH 50
-    '1 60',  # PUSH 60
-    '1 70',  # PUSH 70
-    '1 80',  # PUSH 80
-    '1 90',  # PUSH 90
-    '1 100',  # PUSH 100
-    '1 110',  # PUSH 110
-    '2',  # ADD
-    '2',  # ADD
-    '2',  # ADD
-    '2',  # ADD
-    '2',  # ADD
-    '2',  # ADD
-    '2',  # ADD
-    '2',  # ADD
-    '2',  # ADD
-    '2',  # ADD
-    '3',  # DELETE
-    '1 10',  # PUSH 10
-    '1 10',  # PUSH 10
-    '1 20',  # PUSH 20
-    '4',  # CLEAR
+    '01010000 10',  # PUSH 10
+    '01010000 20',  # PUSH 20
+    '01010000 30',  # PUSH 30
+    '01010000 40',  # PUSH 40
+    '01010000 50',  # PUSH 50
+    '01010000 60',  # PUSH 60
+    '01010000 70',  # PUSH 70
+    '01010000 80',  # PUSH 80
+    '01010000 90',  # PUSH 90
+    '01010000 100',  # PUSH 100
+    '01010000 110',  # PUSH 110
+    '01000001',  # ADD
+    '01000001',  # ADD
+    '01000001',  # ADD
+    '01000001',  # ADD
+    '01000001',  # ADD
+    '01000001',  # ADD
+    '01000001',  # ADD
+    '01000001',  # ADD
+    '01000001',  # ADD
+    '01000001',  # ADD
+    '01000100',  # DELETE
+    '01010000 10',  # PUSH 10
+    '01010000 10',  # PUSH 10
+    '01010000 20',  # PUSH 20
+    '01000011',  # CLEAR
 ]
 
 # Добавляем инструкции в память начиная с 28-й ячейки (index 27)
@@ -49,8 +49,8 @@ def execute_instruction(instruction):
     parts = instruction.split()
     mnemonic = parts[0]  # Теперь команды это числа, сохраняем их в виде строки
 
-    # Команда PUSH (обозначена как '1')
-    if mnemonic == "1":
+    # Команда PUSH (обозначена как '01010000' из-за того, что P в двоичном - 01010000)
+    if mnemonic == "01010000":
         if len(parts) != 2 or not parts[1].isdigit():
             print("\nError: invalid PUSH command")
             return
@@ -64,8 +64,8 @@ def execute_instruction(instruction):
         memory[stack_pointer] = value  # Помещаем значение в ячейку памяти, указанную указателем стека
         stack_pointer += 1  # Увеличиваем указатель стека
 
-    # Команда ADD (обозначена как '2')
-    elif mnemonic == "2":
+    # Команда ADD (обозначена как '01000001' из-за того, что A в двоичном - 01000001)
+    elif mnemonic == "01000001":
         if stack_pointer < 2:  # Если в стеке меньше двух элементов, нельзя выполнить операцию сложения
             print("\nError: Not enough elements in the memory to perform the 'ADD' operation")
             return
@@ -75,27 +75,22 @@ def execute_instruction(instruction):
         memory[stack_pointer - 2] = result  # Помещаем результат обратно на вершину стека
         stack_pointer -= 1  # Уменьшаем указатель стека на 1, так как удалили один элемент
 
-    # Команда DELETE (обозначена как '3')
-    elif mnemonic == "3":
+    # Команда DELETE (обозначена как '01000100' из-за того, что D в двоичном - 01000100)
+    elif mnemonic == "01000100":
         if stack_pointer == 0:  # Если стек пуст, нельзя удалить элемент
             print("Error: memory is empty, cannot remove element")
         else:
             stack_pointer -= 1  # Уменьшаем указатель стека
             removed_element = memory[stack_pointer]  # Считываем удаленный элемент
-            print(f"Element deleted: {removed_element}")
+            print(f"\nElement deleted: {removed_element}")
             memory[stack_pointer] = 0  # Очищаем значение в памяти
 
-    # Команда CLEAR (обозначена как '4')
-    elif mnemonic == "4":
+    # Команда CLEAR (обозначена как '01000011' из-за того, что C в двоичном 01000011)
+    elif mnemonic == "01000011":
         for i in range(stack_pointer):
             memory[i] = 0  # Очищаем все элементы в пределах стека
         stack_pointer = 0  # Сбрасываем указатель стека на 0
         print("MEMORY IS CLEARED.")
-
-    # Команда для завершения работы программы
-    elif mnemonic == "EXIT":
-        print("\nEnd of program.")
-        return "exit"
 
     # Если команда не поддерживается
     else:
@@ -103,7 +98,7 @@ def execute_instruction(instruction):
  
     # Выводим текущее состояние памяти (зону, которая используется как стек) после каждой команды
     print(f"\nCurrent memory state (stack area): {memory[:stack_pointer]}")
-    print(f"RAM usage: {stack_pointer} out of 512")
+    print(f"MEMORY usage: {stack_pointer} out of 512")
     print(memory)
 
 
