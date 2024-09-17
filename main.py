@@ -5,16 +5,42 @@
 # (первый компьютер с ним был сделан аж в 1961 году).
 
 # (Фон-Неймановская архитектура), то есть тут один список/массив должен быть.
-# Память на 512 элементов
-
-# НЕОБХОДИМО СДЕЛАТЬ ЗАРАНЕЕ ГОТОВЫЙ НАБОР ИНСТРУКЦИЙ, КОТОРАЯ БЫ ПРОГРАММА ПОНИМАЛА, типа:
-# 'PUSH 10'
-# 'PUSH 20'
-# ADD
-# ADD
 
 memory = [0] * 512  # Массив памяти на 512 ячеек, изначально заполненных нулями
 stack_pointer = 0  # Указатель на вершину стека, изначально указывает на 0 (стек пуст)
+
+# Заранее определённые команды, начиная с 28-го элемента памяти
+program = [
+    'PUSH 10',
+    'PUSH 20',
+    'PUSH 30',
+    'PUSH 40',
+    'PUSH 50',
+    'PUSH 60',
+    'PUSH 70',
+    'PUSH 80',
+    'PUSH 90',
+    'PUSH 100',
+    'PUSH 110',
+    'ADD',
+    'ADD',
+    'ADD',
+    'ADD',
+    'ADD',
+    'ADD',
+    'ADD',
+    'ADD',
+    'ADD',
+    'ADD',
+    'DELETE',
+    'PUSH 10',
+    'PUSH 10',
+    'PUSH 20',
+    'CLEAR',
+]
+
+# Добавляем инструкции в память начиная с 28-й ячейки (index 27)
+memory[27:27+len(program)] = program
 
 
 # Функция для выполнения инструкций
@@ -60,24 +86,6 @@ def execute_instruction(instruction):
             print(f"Element deleted: {removed_element}")
             memory[stack_pointer] = 0  # Очищаем значение в памяти
 
-
-    # ЭТА КОМАНДА ВООБЩЕ НЕ НУЖНА
-
-    # # Суммирование всех элементов в памяти (в пределах стека). Если стек пуст, выдаётся предупреждение.
-    # elif mnemonic == "SUM":
-    #     if stack_pointer == 0:
-    #         print("\nError: memory is empty, cannot execute 'SUM'")
-    #     else:
-    #         while stack_pointer > 1:
-    #             b = memory[stack_pointer - 1]  # Снимаем верхний элемент
-    #             a = memory[stack_pointer - 2]  # Снимаем предпоследний элемент
-    #             result = a + b  # Складываем два верхних элемента
-    #             memory[stack_pointer - 2] = result  # Помещаем результат на место предпоследнего элемента
-    #             stack_pointer -= 1  # Уменьшаем указатель стека на 1
-    #         # Теперь в memory[0] хранится сумма всех элементов, остальные обнулены
-    #         print(f"\nSUM OF ELEMENTS: {memory[0]}")
-
-
     # Команда для очистки памяти (стека). А-ля было у нас [100, 200, 10], а потом всё стало [].
     elif mnemonic == "CLEAR":
         for i in range(stack_pointer):
@@ -94,19 +102,17 @@ def execute_instruction(instruction):
     else:
         print(f"Инструкция '{mnemonic}' не поддерживается")
 
-
-# Это основной цикл, в котором вводятся команды (ну тут как бы единственная переменная - command, логично же)
-while True:
-    # Получаем команду от пользователя
-    command = input("\nCOMMAND LIST:\n\nPUSH <value_number_int>\nADD\nDELETE\n"
-                    "SUM\nCLEAR\n"
-                    "EXIT\n\nCommand for use: ")
-
-    # Выполняем команду
-    if execute_instruction(command) == "exit":
-        break
-
     # Выводим текущее состояние памяти (зону, которая используется как стек) после каждой команды
     print(f"\nCurrent memory state (stack area): {memory[:stack_pointer]}")
     print(f"RAM usage: {stack_pointer} out of 512")
+    print(memory)
 
+
+# Выполняем инструкции, начиная с 28-го элемента памяти
+instruction_pointer = 27  # Указатель на текущую инструкцию
+
+while instruction_pointer < len(memory) and memory[instruction_pointer] != 0:
+    command = memory[instruction_pointer]
+    if execute_instruction(command) == "exit":
+        break
+    instruction_pointer += 1  # Переходим к следующей инструкции
