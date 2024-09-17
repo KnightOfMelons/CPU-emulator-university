@@ -11,32 +11,32 @@ stack_pointer = 0  # Указатель на вершину стека, изна
 
 # Заранее определённые команды, начиная с 28-го элемента памяти
 program = [
-    'PUSH 10',
-    'PUSH 20',
-    'PUSH 30',
-    'PUSH 40',
-    'PUSH 50',
-    'PUSH 60',
-    'PUSH 70',
-    'PUSH 80',
-    'PUSH 90',
-    'PUSH 100',
-    'PUSH 110',
-    'ADD',
-    'ADD',
-    'ADD',
-    'ADD',
-    'ADD',
-    'ADD',
-    'ADD',
-    'ADD',
-    'ADD',
-    'ADD',
-    'DELETE',
-    'PUSH 10',
-    'PUSH 10',
-    'PUSH 20',
-    'CLEAR',
+    '1 10',  # PUSH 10
+    '1 20',  # PUSH 20
+    '1 30',  # PUSH 30
+    '1 40',  # PUSH 40
+    '1 50',  # PUSH 50
+    '1 60',  # PUSH 60
+    '1 70',  # PUSH 70
+    '1 80',  # PUSH 80
+    '1 90',  # PUSH 90
+    '1 100',  # PUSH 100
+    '1 110',  # PUSH 110
+    '2',  # ADD
+    '2',  # ADD
+    '2',  # ADD
+    '2',  # ADD
+    '2',  # ADD
+    '2',  # ADD
+    '2',  # ADD
+    '2',  # ADD
+    '2',  # ADD
+    '2',  # ADD
+    '3',  # DELETE
+    '1 10',  # PUSH 10
+    '1 10',  # PUSH 10
+    '1 20',  # PUSH 20
+    '4',  # CLEAR
 ]
 
 # Добавляем инструкции в память начиная с 28-й ячейки (index 27)
@@ -47,11 +47,10 @@ memory[27:27+len(program)] = program
 def execute_instruction(instruction):
     global stack_pointer  # Используем глобальную переменную stack_pointer
     parts = instruction.split()
-    mnemonic = parts[0].upper()  # Все команды привожу к верхнему регистру, типа "проверка на дебила", мало ли
+    mnemonic = parts[0]  # Теперь команды это числа, сохраняем их в виде строки
 
-    # Команда для помещения значения в память (в стек). То есть пишешь PUSH 100, затем в память добавляется соточка,
-    # получается: === Текущий стек: 100 ===
-    if mnemonic == "PUSH":
+    # Команда PUSH (обозначена как '1')
+    if mnemonic == "1":
         if len(parts) != 2 or not parts[1].isdigit():
             print("\nError: invalid PUSH command")
             return
@@ -65,8 +64,8 @@ def execute_instruction(instruction):
         memory[stack_pointer] = value  # Помещаем значение в ячейку памяти, указанную указателем стека
         stack_pointer += 1  # Увеличиваем указатель стека
 
-    # Команда ADD для складывания двух верхних элементов памяти (в пределах стека)
-    elif mnemonic == "ADD":
+    # Команда ADD (обозначена как '2')
+    elif mnemonic == "2":
         if stack_pointer < 2:  # Если в стеке меньше двух элементов, нельзя выполнить операцию сложения
             print("\nError: Not enough elements in the memory to perform the 'ADD' operation")
             return
@@ -76,8 +75,8 @@ def execute_instruction(instruction):
         memory[stack_pointer - 2] = result  # Помещаем результат обратно на вершину стека
         stack_pointer -= 1  # Уменьшаем указатель стека на 1, так как удалили один элемент
 
-    # Команда DELETE для удаления последнего элемента из памяти (стека)
-    elif mnemonic == "DELETE":
+    # Команда DELETE (обозначена как '3')
+    elif mnemonic == "3":
         if stack_pointer == 0:  # Если стек пуст, нельзя удалить элемент
             print("Error: memory is empty, cannot remove element")
         else:
@@ -86,8 +85,8 @@ def execute_instruction(instruction):
             print(f"Element deleted: {removed_element}")
             memory[stack_pointer] = 0  # Очищаем значение в памяти
 
-    # Команда для очистки памяти (стека). А-ля было у нас [100, 200, 10], а потом всё стало [].
-    elif mnemonic == "CLEAR":
+    # Команда CLEAR (обозначена как '4')
+    elif mnemonic == "4":
         for i in range(stack_pointer):
             memory[i] = 0  # Очищаем все элементы в пределах стека
         stack_pointer = 0  # Сбрасываем указатель стека на 0
@@ -101,7 +100,7 @@ def execute_instruction(instruction):
     # Если команда не поддерживается
     else:
         print(f"Инструкция '{mnemonic}' не поддерживается")
-
+ 
     # Выводим текущее состояние памяти (зону, которая используется как стек) после каждой команды
     print(f"\nCurrent memory state (stack area): {memory[:stack_pointer]}")
     print(f"RAM usage: {stack_pointer} out of 512")
