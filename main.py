@@ -24,10 +24,11 @@ program = [
     100,
     0b01010000,  # PUSH 100
     100,
+    0b01100110,  # FLAG FOR JUMP
     0b01000001,  # ADD
     0b01101010,  # JUMP
-    0b01010000,
-    18,          # Адрес для JUMP (ну короче, это цифорка команды, куда мы прыгаем. Я прыгаю на ADD, чтобы сумму элементов в массиве сделать)
+    0b01010000,  # PUSH 1
+    1,
     0b01000100,  # DELETE
     0b01000011,  # CLEAR
 ]
@@ -83,6 +84,12 @@ def execute_instruction(instruction, next_val=None):
         stack_pointer -= 1
         jump_to_fallback = False  # Сбрасываем флаг после успешного выполнения ADD
 
+        # Проверка, остался ли в стеке только один элемент
+        if stack_pointer - len(program) == 1:
+            print("\nOnly one element left in the stack after ADD. Jumping to the instruction after PUSH 1.")
+            jump_address = program.index(0b01101010)
+            return program.index(0b01010000, jump_address + 1) + 2
+
     # Команда DELETE
     elif instruction == 0b01000100:
         if stack_pointer == len(program):
@@ -109,12 +116,15 @@ def execute_instruction(instruction, next_val=None):
         jump_flag = True  # Устанавливаем флаг, что JUMP был вызван
         return None  # Ждем следующую команду PUSH для перехода
 
+    # Команда FLAG FOR JUMP
+    elif instruction == 0b01100110:
+        # Эта команда просто устанавливает флаг для JUMP
+        pass
+
     else:
         print(f"Инструкция '{instruction}' не поддерживается")
 
-    print(f"\nCurrent memory state (stack area): {memory[len(program):stack_pointer]}")
-    print(f"MEMORY usage: {stack_pointer} out of {512 - len(program)}")
-    print(memory)
+    return None
 
 
 # Выполняем инструкции начиная с начала программы
@@ -132,8 +142,13 @@ while instruction_pointer < len(memory) and memory[instruction_pointer] != 0:
         else:
             instruction_pointer += 2  # Переход через команду и значение
     elif command == 0b01101010:
-        execute_instruction(command)
-        instruction_pointer += 1  # Пропускаем только JUMP и ждем PUSH
+        # Ищем первый флаг 0b01100110 во всей памяти
+        try:
+            jump_address = memory.index(0b01100110)
+            instruction_pointer = jump_address  # Переход на найденный флаг
+        except ValueError:
+            print("Error: FLAG FOR JUMP not found")
+            break
     else:
         result = execute_instruction(command)
         if result is not None:  # Если ADD вернула fallback адрес, переход на него
@@ -143,3 +158,8 @@ while instruction_pointer < len(memory) and memory[instruction_pointer] != 0:
                 instruction_pointer += 1  # Пропускаем резервный адрес после прыжка
         else:
             instruction_pointer += 1  # Переход к следующей инструкции
+
+    # Вывод текущего состояния памяти после выполнения инструкции
+    print(f"\nCurrent memory state (stack area): {memory[len(program):stack_pointer]}")
+    print(f"MEMORY usage: {stack_pointer} out of {512 - len(program)}")
+    print(memory)
