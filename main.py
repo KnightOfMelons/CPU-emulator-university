@@ -38,16 +38,18 @@ memory = [0] * 512  # Память на 512 элементов
 memory[:len(program)] = program
 stack_pointer = len(program)
 
-
 # Глобальная переменная для отслеживания, был ли JUMP перед PUSH
 jump_flag = False
 # Адрес на случай ошибки в ADD
 fallback_address = None
 # Флаг, что произошел переход на fallback
 jump_to_fallback = False
+# Флаг для вывода состояния памяти
+memory_state_printed = False
+
 
 def execute_instruction(instruction, next_val=None):
-    global stack_pointer, jump_flag, fallback_address, jump_to_fallback
+    global stack_pointer, jump_flag, fallback_address, jump_to_fallback, memory_state_printed
 
     # Команда PUSH
     if instruction == 0b01010000:
@@ -67,6 +69,7 @@ def execute_instruction(instruction, next_val=None):
                 return
             memory[stack_pointer] = value
             stack_pointer += 1
+            memory_state_printed = False  # Сбрасываем флаг вывода состояния памяти
 
     # Команда ADD
     elif instruction == 0b01000001:
@@ -83,6 +86,7 @@ def execute_instruction(instruction, next_val=None):
         memory[stack_pointer - 2] = result
         stack_pointer -= 1
         jump_to_fallback = False  # Сбрасываем флаг после успешного выполнения ADD
+        memory_state_printed = False  # Сбрасываем флаг вывода состояния памяти
 
         # Проверка, остался ли в стеке только один элемент
         if stack_pointer - len(program) == 1:
@@ -99,7 +103,7 @@ def execute_instruction(instruction, next_val=None):
             removed_element = memory[stack_pointer]
             print(f"\nElement deleted: {removed_element}")
             memory[stack_pointer] = 0
-        jump_to_fallback = False  # Сбрасываем флаг после выполнения DELETE
+            memory_state_printed = False  # Сбрасываем флаг вывода состояния памяти
 
     # Команда CLEAR
     elif instruction == 0b01000011:
@@ -109,7 +113,7 @@ def execute_instruction(instruction, next_val=None):
         for i in range(stack_pointer, len(memory)):
             memory[i] = 0
         print("MEMORY IS CLEARED.")
-        jump_to_fallback = False  # Сбрасываем флаг после выполнения CLEAR
+        memory_state_printed = False  # Сбрасываем флаг вывода состояния памяти
 
     # Команда JUMP
     elif instruction == 0b01101010:
@@ -142,13 +146,14 @@ while instruction_pointer < len(memory) and memory[instruction_pointer] != 0:
         else:
             instruction_pointer += 2  # Переход через команду и значение
     elif command == 0b01101010:
-        # Ищем первый флаг 0b01100110 во всей памяти
-        try:
-            jump_address = memory.index(0b01100110)
-            instruction_pointer = jump_address  # Переход на найденный флаг
-        except ValueError:
-            print("Error: FLAG FOR JUMP not found")
-            break
+        # Если был JUMP, устанавливаем переход на нужный адрес один раз
+        if not jump_flag:  # Избегаем повторного выполнения
+            try:
+                jump_address = memory.index(0b01100110)
+                instruction_pointer = jump_address  # Переход на найденный флаг
+            except ValueError:
+                print("Error: FLAG FOR JUMP not found")
+                break
     else:
         result = execute_instruction(command)
         if result is not None:  # Если ADD вернула fallback адрес, переход на него
@@ -159,7 +164,8 @@ while instruction_pointer < len(memory) and memory[instruction_pointer] != 0:
         else:
             instruction_pointer += 1  # Переход к следующей инструкции
 
-    # Вывод текущего состояния памяти после выполнения инструкции
-    print(f"\nCurrent memory state (stack area): {memory[len(program):stack_pointer]}")
-    print(f"MEMORY usage: {stack_pointer} out of {512 - len(program)}")
-    print(memory)
+    # Условие для вывода состояния памяти только один раз после выполнения команд, которые меняют память
+    if command in [0b01010000, 0b01000001, 0b01000100, 0b01000011] and not memory_state_printed:
+        print(f"\nCurrent memory state (stack area): {memory[len(program):stack_pointer]}")
+        print(f"MEMORY usage: {stack_pointer} out of {512 - len(program)}")
+        memory_state_printed = True  # Устанавливаем флаг, чтобы состояние памяти не выводилось снова
