@@ -169,3 +169,5 @@ while instruction_pointer < len(memory) and memory[instruction_pointer] != 0:
         print(f"\nCurrent memory state (stack area): {memory[len(program):stack_pointer]}")
         print(f"MEMORY usage: {stack_pointer} out of {512 - len(program)}")
         memory_state_printed = True  # Устанавливаем флаг, чтобы состояние памяти не выводилось снова
+
+# Тест
