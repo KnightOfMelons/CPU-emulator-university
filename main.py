@@ -1,11 +1,7 @@
 # Сделано Ильёй с любовью и под музыку из игры Гарри Поттер и Философский камень (Happy Hogwarts - Jeremy Soule)
 
-# В техническом задании ещё сказано, что я должен сделать эмулятор по уже существующему процессору, но я в этой теме не
-# шарю, поэтому спросил у ИИ и она подсказала, что это похоже на архитектуру старого процессора типа Burroughs B5000
-# (первый компьютер с ним был сделан аж в 1961 году).
-
-# Заранее готовые инструкции (то есть простой набор действий по типу добавить 10 20 30, суммировать их и тд)
 program = [
+    512, # Это задаем изначальный размер
     0b01010000,  # PUSH 70
     70,
     0b01010000,  # PUSH 80
@@ -22,21 +18,23 @@ program = [
     100,
     0b01010000,  # PUSH 100
     100,
-    0b01010000,  # PUSH 100
-    100,
-    0b01100110,  # FLAG FOR JUMP
-    0b01000001,  # ADD
+    0b01000001,  # ADD. JUMP прыгает сюда
+    0b01010000,  # PUSH 18
+    18,  # Адрес для JUMP
     0b01101010,  # JUMP
-    0b01010000,  # PUSH 1
-    1,
     0b01000100,  # DELETE
     0b01000011,  # CLEAR
 ]
 
-# (Фон-Неймановская архитектура), то есть тут один список/массив должен быть.
-memory = [0] * 512  # Память на 512 элементов
-memory[:len(program)] = program
-stack_pointer = len(program)
+# Извлекаем первый элемент как размер памяти
+memory_size = program[0]
+
+# Инициализируем память с указанным размером
+memory = [0] * memory_size
+
+# Копируем программу в начало памяти, начиная со второго элемента программы
+memory[:len(program) - 1] = program[1:]
+stack_pointer = len(program) - 1  # Устанавливаем stack_pointer после программы
 
 # Глобальная переменная для отслеживания, был ли JUMP перед PUSH
 jump_flag = False
@@ -44,12 +42,10 @@ jump_flag = False
 fallback_address = None
 # Флаг, что произошел переход на fallback
 jump_to_fallback = False
-# Флаг для вывода состояния памяти
-memory_state_printed = False
 
 
 def execute_instruction(instruction, next_val=None):
-    global stack_pointer, jump_flag, fallback_address, jump_to_fallback, memory_state_printed
+    global stack_pointer, jump_flag, fallback_address, jump_to_fallback
 
     # Команда PUSH
     if instruction == 0b01010000:
@@ -59,7 +55,7 @@ def execute_instruction(instruction, next_val=None):
         if jump_flag:
             # Если перед PUSH был JUMP, то возвращаем значение как адрес для перехода
             jump_flag = False  # Сбрасываем флаг JUMP
-            fallback_address = next_val + 1  # Запоминаем fallback адрес
+            fallback_address = next_val  # Запоминаем адрес перед JUMP для возврата после цикла ADD
             return next_val  # Возвращаем значение для перехода по JUMP
         else:
             # Обычное поведение PUSH
@@ -69,11 +65,10 @@ def execute_instruction(instruction, next_val=None):
                 return
             memory[stack_pointer] = value
             stack_pointer += 1
-            memory_state_printed = False  # Сбрасываем флаг вывода состояния памяти
 
     # Команда ADD
     elif instruction == 0b01000001:
-        if stack_pointer - len(program) < 2:
+        if stack_pointer - (len(program) - 1) < 2:
             print("\nError: Not enough elements in the memory to perform the 'ADD' operation")
             if fallback_address is not None and not jump_to_fallback:
                 print(f"\nJumping to fallback address: {fallback_address}")
@@ -86,53 +81,44 @@ def execute_instruction(instruction, next_val=None):
         memory[stack_pointer - 2] = result
         stack_pointer -= 1
         jump_to_fallback = False  # Сбрасываем флаг после успешного выполнения ADD
-        memory_state_printed = False  # Сбрасываем флаг вывода состояния памяти
-
-        # Проверка, остался ли в стеке только один элемент
-        if stack_pointer - len(program) == 1:
-            print("\nOnly one element left in the stack after ADD. Jumping to the instruction after PUSH 1.")
-            jump_address = program.index(0b01101010)
-            return program.index(0b01010000, jump_address + 1) + 2
 
     # Команда DELETE
     elif instruction == 0b01000100:
-        if stack_pointer == len(program):
+        if stack_pointer == len(program) - 1:
             print("Error: memory is empty, cannot remove element")
         else:
             stack_pointer -= 1
             removed_element = memory[stack_pointer]
             print(f"\nElement deleted: {removed_element}")
             memory[stack_pointer] = 0
-            memory_state_printed = False  # Сбрасываем флаг вывода состояния памяти
+        jump_to_fallback = False  # Сбрасываем флаг после выполнения DELETE
 
     # Команда CLEAR
     elif instruction == 0b01000011:
-        for i in range(len(program), stack_pointer):
+        for i in range(len(program) - 1, stack_pointer):
             memory[i] = 0
-        stack_pointer = len(program)
+        stack_pointer = len(program) - 1
         for i in range(stack_pointer, len(memory)):
             memory[i] = 0
         print("MEMORY IS CLEARED.")
-        memory_state_printed = False  # Сбрасываем флаг вывода состояния памяти
+        jump_to_fallback = False  # Сбрасываем флаг после выполнения CLEAR
 
     # Команда JUMP
     elif instruction == 0b01101010:
-        jump_flag = True  # Устанавливаем флаг, что JUMP был вызван
-        return None  # Ждем следующую команду PUSH для перехода
-
-    # Команда FLAG FOR JUMP
-    elif instruction == 0b01100110:
-        # Эта команда просто устанавливает флаг для JUMP
-        pass
+        # После JUMP продолжаем выполнение команд до следующего PUSH
+        while stack_pointer - (len(program) - 1) > 1:  # Пока в стеке больше одного элемента
+            execute_instruction(0b01000001)  # Выполняем ADD
 
     else:
         print(f"Инструкция '{instruction}' не поддерживается")
 
-    return None
+    print(f"\nCurrent memory state (stack area): {memory[len(program) - 1:stack_pointer]}")
+    print(f"РАЗМЕР ДЛЯ ТЕСТА: {len(memory)}")
+    print(f"MEMORY usage: {stack_pointer} out of {memory_size - (len(program) - 1)}")
 
 
 # Выполняем инструкции начиная с начала программы
-instruction_pointer = 0  # Указатель на первую инструкцию
+instruction_pointer = 0  # Указатель на первую инструкцию после размера
 
 while instruction_pointer < len(memory) and memory[instruction_pointer] != 0:
     command = memory[instruction_pointer]
@@ -146,14 +132,8 @@ while instruction_pointer < len(memory) and memory[instruction_pointer] != 0:
         else:
             instruction_pointer += 2  # Переход через команду и значение
     elif command == 0b01101010:
-        # Если был JUMP, устанавливаем переход на нужный адрес один раз
-        if not jump_flag:  # Избегаем повторного выполнения
-            try:
-                jump_address = memory.index(0b01100110)
-                instruction_pointer = jump_address  # Переход на найденный флаг
-            except ValueError:
-                print("Error: FLAG FOR JUMP not found")
-                break
+        execute_instruction(command)
+        instruction_pointer += 1  # Переход к следующей инструкции (после JUMP и ADD)
     else:
         result = execute_instruction(command)
         if result is not None:  # Если ADD вернула fallback адрес, переход на него
@@ -163,11 +143,3 @@ while instruction_pointer < len(memory) and memory[instruction_pointer] != 0:
                 instruction_pointer += 1  # Пропускаем резервный адрес после прыжка
         else:
             instruction_pointer += 1  # Переход к следующей инструкции
-
-    # Условие для вывода состояния памяти только один раз после выполнения команд, которые меняют память
-    if command in [0b01010000, 0b01000001, 0b01000100, 0b01000011] and not memory_state_printed:
-        print(f"\nCurrent memory state (stack area): {memory[len(program):stack_pointer]}")
-        print(f"MEMORY usage: {stack_pointer} out of {512 - len(program)}")
-        memory_state_printed = True  # Устанавливаем флаг, чтобы состояние памяти не выводилось снова
-
-# Тест
