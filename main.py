@@ -1,7 +1,4 @@
-# Сделано Ильёй с любовью и под музыку из игры Гарри Поттер и Философский камень (Happy Hogwarts - Jeremy Soule)
-
 program = [
-    512, # Это задаем изначальный размер
     0b01010000,  # PUSH 70
     70,
     0b01010000,  # PUSH 80
@@ -16,25 +13,53 @@ program = [
     100,
     0b01010000,  # PUSH 100
     100,
-    0b01010000,  # PUSH 100
-    100,
     0b01000001,  # ADD. JUMP прыгает сюда
     0b01010000,  # PUSH 18
     18,  # Адрес для JUMP
     0b01101010,  # JUMP
     0b01000100,  # DELETE
     0b01000011,  # CLEAR
+    10,  # Количество следующих чисел
+    1,  # READ указал на это число
+    2,  # READ второй указал на это число
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    0b01010011,  # Вызывается команда READ
+    21,  # Нужно прочитать значение под индексом 23 (1) и поместить в стек
+    0b01010011,  # Вызывается команда READ снова
+    22,  # Нужно прочитать значение под индексом 24 (2) и поместить в стек
+    0b01010011,
+    23,
+    0b01010011,
+    24,
+    0b01010011,
+    25,
+    0b01010011,
+    26,
+    0b01010011,
+    27,
+    0b01010011,
+    28,
+    0b01010011,
+    29,
+    0b01010011,
+    30,
 ]
 
-# Извлекаем первый элемент как размер памяти
-memory_size = program[0]
+memory = [0] * 512  # Память на 512 элементов
 
-# Инициализируем память с указанным размером
-memory = [0] * memory_size
+# Заполняем память в нужном порядке
+memory[:len(program)] = program  # Сначала основная программа
+memory[len(program):len(program) + 10] = [70]  # Следующее значение - 70
+memory[len(program) + 1:] = [0] * (512 - len(program) - 1)  # Оставляем место для других данных
 
-# Копируем программу в начало памяти, начиная со второго элемента программы
-memory[:len(program) - 1] = program[1:]
-stack_pointer = len(program) - 1  # Устанавливаем stack_pointer после программы
+stack_pointer = len(program)
 
 # Глобальная переменная для отслеживания, был ли JUMP перед PUSH
 jump_flag = False
@@ -53,12 +78,10 @@ def execute_instruction(instruction, next_val=None):
             print("\nError: invalid PUSH command")
             return
         if jump_flag:
-            # Если перед PUSH был JUMP, то возвращаем значение как адрес для перехода
             jump_flag = False  # Сбрасываем флаг JUMP
             fallback_address = next_val  # Запоминаем адрес перед JUMP для возврата после цикла ADD
             return next_val  # Возвращаем значение для перехода по JUMP
         else:
-            # Обычное поведение PUSH
             value = next_val
             if stack_pointer >= len(memory):
                 print("\nError: memory is full, can't add new element")
@@ -68,7 +91,7 @@ def execute_instruction(instruction, next_val=None):
 
     # Команда ADD
     elif instruction == 0b01000001:
-        if stack_pointer - (len(program) - 1) < 2:
+        if stack_pointer - len(program) < 2:
             print("\nError: Not enough elements in the memory to perform the 'ADD' operation")
             if fallback_address is not None and not jump_to_fallback:
                 print(f"\nJumping to fallback address: {fallback_address}")
@@ -77,14 +100,14 @@ def execute_instruction(instruction, next_val=None):
             return
         b = memory[stack_pointer - 1]
         a = memory[stack_pointer - 2]
-        result = a + b
-        memory[stack_pointer - 2] = result
+        sum_result = a + b  # Переименовали 'result' в 'sum_result'
+        memory[stack_pointer - 2] = sum_result
         stack_pointer -= 1
         jump_to_fallback = False  # Сбрасываем флаг после успешного выполнения ADD
 
     # Команда DELETE
     elif instruction == 0b01000100:
-        if stack_pointer == len(program) - 1:
+        if stack_pointer == len(program):
             print("Error: memory is empty, cannot remove element")
         else:
             stack_pointer -= 1
@@ -95,9 +118,9 @@ def execute_instruction(instruction, next_val=None):
 
     # Команда CLEAR
     elif instruction == 0b01000011:
-        for i in range(len(program) - 1, stack_pointer):
+        for i in range(len(program), stack_pointer):
             memory[i] = 0
-        stack_pointer = len(program) - 1
+        stack_pointer = len(program)
         for i in range(stack_pointer, len(memory)):
             memory[i] = 0
         print("MEMORY IS CLEARED.")
@@ -105,20 +128,37 @@ def execute_instruction(instruction, next_val=None):
 
     # Команда JUMP
     elif instruction == 0b01101010:
-        # После JUMP продолжаем выполнение команд до следующего PUSH
-        while stack_pointer - (len(program) - 1) > 1:  # Пока в стеке больше одного элемента
+        while stack_pointer - len(program) > 1:  # Пока в стеке больше одного элемента
             execute_instruction(0b01000001)  # Выполняем ADD
 
-    else:
-        print(f"Инструкция '{instruction}' не поддерживается")
+    # Команда READ
+    elif instruction == 0b01010011:
+        if next_val is None or not isinstance(next_val, int):
+            print("\nError: invalid READ command")
+            return
+        # Получаем значение по индексу, который указан как next_val
+        if next_val >= len(memory):
+            print("\nError: invalid memory address for READ")
+            return
+        value = memory[next_val]
+        # Добавляем это значение в стек
+        if stack_pointer >= len(memory):
+            print("\nError: memory is full, can't add new element")
+            return
+        memory[stack_pointer] = value
+        stack_pointer += 1
 
-    print(f"\nCurrent memory state (stack area): {memory[len(program) - 1:stack_pointer]}")
-    print(f"РАЗМЕР ДЛЯ ТЕСТА: {len(memory)}")
-    print(f"MEMORY usage: {stack_pointer} out of {memory_size - (len(program) - 1)}")
+    else:
+        if instruction < 0b01010000 or instruction > 0b01101010:
+            return
+
+    print(f"\nCurrent memory state (stack area): {memory[len(program):stack_pointer]}")
+    print(f"MEMORY usage: {stack_pointer} out of {512 - len(program)}")
+    print(memory)
 
 
 # Выполняем инструкции начиная с начала программы
-instruction_pointer = 0  # Указатель на первую инструкцию после размера
+instruction_pointer = 0  # Указатель на первую инструкцию
 
 while instruction_pointer < len(memory) and memory[instruction_pointer] != 0:
     command = memory[instruction_pointer]
@@ -134,11 +174,14 @@ while instruction_pointer < len(memory) and memory[instruction_pointer] != 0:
     elif command == 0b01101010:
         execute_instruction(command)
         instruction_pointer += 1  # Переход к следующей инструкции (после JUMP и ADD)
+    elif command == 0b01010011:  # READ команда
+        next_value = memory[instruction_pointer + 1]
+        execute_instruction(command, next_value)
+        instruction_pointer += 2  # Переход через команду и значение
     else:
         result = execute_instruction(command)
         if result is not None:  # Если ADD вернула fallback адрес, переход на него
             instruction_pointer = result
-            # Пропускаем команду ADD, которая вызвала ошибку, и продолжаем с DELETE
             if fallback_address:
                 instruction_pointer += 1  # Пропускаем резервный адрес после прыжка
         else:
