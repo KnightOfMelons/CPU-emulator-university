@@ -30,26 +30,38 @@ program = [
     8,
     9,
     10,
-    0b01010011,  # Вызывается команда READ
-    21,  # Нужно прочитать значение под индексом 23 (1) и поместить в стек
-    0b01010011,  # Вызывается команда READ снова
-    22,  # Нужно прочитать значение под индексом 24 (2) и поместить в стек
-    0b01010011,
+    0b01010000,  # PUSH добавляет 21
+    21,
+    0b01010011,  # READ команда читает число перед ней (21) и добавляет в стек значение по адресу 21 (то есть 1)
+    0b01010000,  # PUSH добавляет 22
+    22,
+    0b01010011,  # READ команда читает число перед ней (22) и добавляет в стек значение по адресу 22 (то есть 2)
+    # ДОРОГОЙ ИЛЬЯ ИЗ БУДУЩЕГО, ЕСЛИ ТЫ ЭТО ЧИТАЕШЬ, ТО Я НАВЕРНОЕ Я УЖЕ УМЕР. СДЕЛАЙ ТАК,
+    # ЧТОБЫ СУММА ДЕЛАЛАСЬ С ПОМОЩЬЮ JUMP
+    0b01010000,  # PUSH
     23,
-    0b01010011,
+    0b01010011,  # READ
+    0b01010000,  # PUSH
     24,
-    0b01010011,
+    0b01010011,  # READ
+    0b01010000,  # PUSH
     25,
-    0b01010011,
+    0b01010011,  # READ
+    0b01010000,  # PUSH
     26,
-    0b01010011,
+    0b01010011,  # READ
+    0b01010000,  # PUSH
     27,
-    0b01010011,
+    0b01010011,  # READ
+    0b01010000,  # PUSH
     28,
-    0b01010011,
+    0b01010011,  # READ
+    0b01010000,  # PUSH
     29,
-    0b01010011,
+    0b01010011,  # READ
+    0b01010000,  # PUSH
     30,
+    0b01010011,  # READ
 ]
 
 memory = [0] * 512  # Память на 512 элементов
@@ -69,7 +81,7 @@ fallback_address = None
 jump_to_fallback = False
 
 
-def execute_instruction(instruction, next_val=None):
+def execute_instruction(instruction, next_val=None, prev_val=None):
     global stack_pointer, jump_flag, fallback_address, jump_to_fallback
 
     # Команда PUSH
@@ -133,14 +145,20 @@ def execute_instruction(instruction, next_val=None):
 
     # Команда READ
     elif instruction == 0b01010011:
-        if next_val is None or not isinstance(next_val, int):
+        if prev_val is None or not isinstance(prev_val, int):
             print("\nError: invalid READ command")
             return
-        # Получаем значение по индексу, который указан как next_val
-        if next_val >= len(memory):
+        # Получаем значение по индексу, который указан как prev_val (значение перед командой READ)
+        if prev_val >= len(memory):
             print("\nError: invalid memory address for READ")
             return
-        value = memory[next_val]
+        value = memory[prev_val]
+
+        # Удаляем предыдущее значение, если оно есть
+        if stack_pointer > len(program):
+            stack_pointer -= 1  # Убираем последнее добавленное значение
+            memory[stack_pointer] = 0  # Обнуляем удалённое значение
+
         # Добавляем это значение в стек
         if stack_pointer >= len(memory):
             print("\nError: memory is full, can't add new element")
@@ -175,9 +193,9 @@ while instruction_pointer < len(memory) and memory[instruction_pointer] != 0:
         execute_instruction(command)
         instruction_pointer += 1  # Переход к следующей инструкции (после JUMP и ADD)
     elif command == 0b01010011:  # READ команда
-        next_value = memory[instruction_pointer + 1]
-        execute_instruction(command, next_value)
-        instruction_pointer += 2  # Переход через команду и значение
+        prev_value = memory[instruction_pointer - 1]  # Получаем число перед командой READ
+        execute_instruction(command, prev_val=prev_value)
+        instruction_pointer += 1  # Переход к следующей инструкции после READ
     else:
         result = execute_instruction(command)
         if result is not None:  # Если ADD вернула fallback адрес, переход на него
