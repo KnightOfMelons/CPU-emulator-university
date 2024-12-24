@@ -1,87 +1,13 @@
 import os
 
-program = [
-    0b01010000,  # PUSH 70
-    70,
-    0b01010000,  # PUSH 80
-    80,
-    0b01010000,  # PUSH 90
-    90,
-    0b01010000,  # PUSH 100
-    100,
-    0b01010000,  # PUSH 100
-    100,
-    0b01010000,  # PUSH 100
-    100,
-    0b01010000,  # PUSH 100
-    100,
-    0b01000001,  # ADD. JUMP прыгает сюда
-    0b01010000,  # PUSH 18
-    18,  # Адрес для JUMP
-    0b01101010,  # JUMP
-    0b01000100,  # DELETE
-    0b01000011,  # CLEAR
-    10,  # Количество следующих чисел
-    1,  # READ указал на это число
-    2,  # READ второй указал на это число
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    0b01010000,  # PUSH добавляет 21
-    21,
-    0b01010011,  # READ команда читает число перед ней (21) и добавляет в стек значение по адресу 21 (то есть 1)
-    0b01010000,  # PUSH добавляет 22
-    22,
-    0b01010011,  # READ команда читает число перед ней (22) и добавляет в стек значение по адресу 22 (то есть 2)
-    0b01000001,  # ADD
-    0b01010000,  # PUSH
-    23,
-    0b01010011,  # READ
-    0b01000001,  # ADD
-    0b01010000,  # PUSH
-    24,
-    0b01010011,  # READ
-    0b01000001,  # ADD
-    0b01010000,  # PUSH
-    25,
-    0b01010011,  # READ
-    0b01000001,  # ADD
-    0b01010000,  # PUSH
-    26,
-    0b01010011,  # READ
-    0b01000001,  # ADD
-    0b01010000,  # PUSH
-    27,
-    0b01010011,  # READ
-    0b01000001,  # ADD
-    0b01010000,  # PUSH
-    28,
-    0b01010011,  # READ
-    0b01000001,  # ADD
-    0b01010000,  # PUSH
-    29,
-    0b01010011,  # READ
-    0b01000001,  # ADD
-    0b01010000,  # PUSH
-    30,
-    0b01010011,  # READ
-    0b01000001,  # ADD
-]
-
-memory = [0] * 512
-memory[:len(program)] = program
-memory[len(program):len(program) + 10] = [70]
-memory[len(program) + 1:] = [0] * (512 - len(program) - 1)
-
-stack_pointer = len(program)
 jump_flag = False
 fallback_address = None
 jump_to_fallback = False
+stack_pointer = 0
+instruction_pointer = 0
+program = []
+memory = []
+
 
 def execute_instruction(instruction, next_val=None, prev_val=None):
     """
@@ -95,24 +21,10 @@ def execute_instruction(instruction, next_val=None, prev_val=None):
     Возвращает:
     - int: Возвращает адрес перехода, если команда JUMP или подобная, иначе None.
 
-    Описание команд:
-    - 0b01010000 (PUSH): Добавляет значение в стек. Если установлен флаг перехода, сохраняет значение как адрес возврата.
-    - 0b01000001 (ADD): Складывает два верхних элемента стека и сохраняет результат на месте первого элемента.
-    - 0b01000100 (DELETE): Удаляет верхний элемент стека.
-    - 0b01000011 (CLEAR): Очищает весь стек.
-    - 0b01101010 (JUMP): Выполняет цикл сложения до тех пор, пока в стеке есть элементы.
-    - 0b01010011 (READ): Читает значение из памяти по указанному адресу и добавляет его в стек.
-
-    Глобальные переменные:
-    - stack_pointer (int): Указатель на текущую позицию в стеке.
-    - jump_flag (bool): Флаг, указывающий на необходимость сохранения адреса возврата.
-    - fallback_address (int): Адрес возврата для команды JUMP.
-    - jump_to_fallback (bool): Флаг, указывающий на необходимость перехода к адресу возврата.
-
     Примечания:
     - Функция также выводит текущее состояние стека и использование памяти.
     - Если команда не распознана, она игнорируется.
-    """    
+    """
     global stack_pointer, jump_flag, fallback_address, jump_to_fallback
     if instruction == 0b01010000:
         if next_val is None or not isinstance(next_val, int):
@@ -184,23 +96,12 @@ def execute_instruction(instruction, next_val=None, prev_val=None):
             return
     print(f"\nCurrent memory state (stack area): {memory[len(program):stack_pointer]}")
     print(f"MEMORY usage: {stack_pointer} out of {512 - len(program)}")
-    # print(memory)
 
 def run_program():
     """
     Запускает выполнение программы, интерпретируя команды из памяти.
 
     Эта функция проходит по памяти, извлекает команды и выполняет их с помощью функции `execute_instruction`.
-    Она продолжает выполнение до тех пор, пока не достигнет конца памяти или команды, которая завершает выполнение (например, команда с нулевым значением).
-
-    Глобальные переменные:
-    - instruction_pointer (int): Указатель на текущую команду в памяти.
-    - memory (list): Массив, представляющий память, содержащую команды и данные.
-
-    Примечания:
-    - Функция использует глобальные переменные `instruction_pointer` и `memory`.
-    - После выполнения команды функция обновляет `instruction_pointer` в зависимости от типа команды.
-    - Если команда требует перехода (например, JUMP), `instruction_pointer` устанавливается на новый адрес.
     """
     global instruction_pointer
     while instruction_pointer < len(memory) and memory[instruction_pointer] != 0:
@@ -228,5 +129,125 @@ def run_program():
             else:
                 instruction_pointer += 1
 
-instruction_pointer = 0
-run_program()
+def process_file_and_run():
+    """
+    Считывает команды из файла "example.txt", выполняет их и сохраняет результаты в файл "results.txt" в виде двоичных строк.
+
+    Примечания:
+    - Файл "example.txt" должен содержать команды в виде строк, которые могут быть преобразованы в целые числа.
+    - Результаты сохраняются в файл "results.txt" в виде двоичных строк, каждая строка соответствует одному значению из памяти.
+    """
+    global program, memory, stack_pointer, instruction_pointer
+
+    with open("example.txt", "r") as file:
+        commands = [line.strip() for line in file if line.strip()]
+
+    program = [int(cmd.replace(",", ""), 2) if cmd.startswith("0b") else int(cmd.replace(",", "")) for cmd in commands]
+
+    memory = [0] * 512
+    memory[:len(program)] = program
+    stack_pointer = len(program)
+    instruction_pointer = 0
+
+    run_program()
+
+    with open("results.txt", "w") as result_file:
+        for value in memory[len(program):stack_pointer]:
+            binary_string = bin(value)[2:]
+            result_file.write(binary_string + "\n")
+
+
+if __name__ == "__main__":
+    """
+    Точка входа в программу. Предоставляет пользователю выбор:
+    - выполнить встроенную программу;
+    - считать команды из файла "example.txt" и выполнить их.
+    """
+    print("Выберите действие:")
+    print("1 - Выполнить первую задачу (встроенная программа)")
+    print("2 - Выполнить третью задачу (считывание из файла example.txt)")
+    choice = input("Введите номер действия: ")
+
+    if choice == "1":
+        program = [
+            0b01010000,  # PUSH 70
+            70,
+            0b01010000,  # PUSH 80
+            80,
+            0b01010000,  # PUSH 90
+            90,
+            0b01010000,  # PUSH 100
+            100,
+            0b01010000,  # PUSH 100
+            100,
+            0b01010000,  # PUSH 100
+            100,
+            0b01010000,  # PUSH 100
+            100,
+            0b01000001,  # ADD. JUMP прыгает сюда
+            0b01010000,  # PUSH 18
+            18,  # Адрес для JUMP
+            0b01101010,  # JUMP
+            0b01000100,  # DELETE
+            0b01000011,  # CLEAR
+            10,  # Количество следующих чисел
+            1,  # READ указал на это число
+            2,  # READ второй указал на это число
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            0b01010000,  # PUSH добавляет 21
+            21,
+            0b01010011,  # READ команда читает число перед ней (21) и добавляет в стек значение по адресу 21 (то есть 1)
+            0b01010000,  # PUSH добавляет 22
+            22,
+            0b01010011,  # READ команда читает число перед ней (22) и добавляет в стек значение по адресу 22 (то есть 2)
+            0b01000001,  # ADD
+            0b01010000,  # PUSH
+            23,
+            0b01010011,  # READ
+            0b01000001,  # ADD
+            0b01010000,  # PUSH
+            24,
+            0b01010011,  # READ
+            0b01000001,  # ADD
+            0b01010000,  # PUSH
+            25,
+            0b01010011,  # READ
+            0b01000001,  # ADD
+            0b01010000,  # PUSH
+            26,
+            0b01010011,  # READ
+            0b01000001,  # ADD
+            0b01010000,  # PUSH
+            27,
+            0b01010011,  # READ
+            0b01000001,  # ADD
+            0b01010000,  # PUSH
+            28,
+            0b01010011,  # READ
+            0b01000001,  # ADD
+            0b01010000,  # PUSH
+            29,
+            0b01010011,  # READ
+            0b01000001,  # ADD
+            0b01010000,  # PUSH
+            30,
+            0b01010011,  # READ
+            0b01000001,  # ADD
+        ]
+        memory = [0] * 512
+        memory[:len(program)] = program
+        stack_pointer = len(program)
+        instruction_pointer = 0
+        run_program()
+
+    elif choice == "2":
+        process_file_and_run()
+    else:
+        print("Неверный выбор. Завершение программы.")
